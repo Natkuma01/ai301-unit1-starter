@@ -47,7 +47,10 @@ One line per issue while grading, then a table:
 - `gold` is the instructor label from `gold-labels.json`.
 - `verdict` is what the skill decided with YOUR rubric.
 - The `note` column names the checks your rubric failed the issue on,
-  which is where to look when you disagree with a gold label.
+  which is where to look when you disagree with a gold label. Names
+  tagged `(preferred)` cannot have caused the reject (preferred checks
+  never change a verdict); the untagged names are the required
+  failures to investigate.
 - The `categories` line tallies matches per eval-set composition
   category. Passing needs at least one match in every category (the
   category floor): a rubric that cannot see a whole category, however

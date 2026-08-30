@@ -100,6 +100,18 @@ def rubric_has_checks(text: str) -> bool:
     return False
 
 
+def preferred_check_names(text: str) -> set[str]:
+    """Check names the rubric weights `preferred` (they never change a
+    verdict), lowercased, for tagging in the note column."""
+    body = re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL)
+    names = set()
+    for line in body.splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) >= 4 and cells[-1].lower() == "preferred":
+            names.add(cells[0].strip("`").lower())
+    return names
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         description="Grade the eval set with a rubric and score agreement.")
@@ -134,6 +146,7 @@ def main() -> int:
             return 2
     rubric = rubric_p.read_text(encoding="utf-8")
     skill = skill_p.read_text(encoding="utf-8")
+    preferred = preferred_check_names(rubric)
 
     if not rubric_has_checks(rubric):
         print(f"error: {rubric_p} has no filled-in checks. The shipped "
@@ -206,7 +219,9 @@ def main() -> int:
             c[1] += 1
             c[0] += int(match)
         note = "" if match else \
-            ("failed: " + ", ".join(r["failed_checks"])
+            ("failed: " + ", ".join(
+                f"{c} (preferred)" if c.lower() in preferred else c
+                for c in r["failed_checks"])
              if r["verdict"] == "reject" else "graded accept")
         rows.append((it["id"], gold_v, r["verdict"],
                      "yes" if match else "NO", note))
