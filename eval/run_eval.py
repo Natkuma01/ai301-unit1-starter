@@ -66,8 +66,15 @@ def grade_one(item_id: str, bundle_path: Path, skill: str, rubric: str,
             last_err = f"timed out after {timeout}s"
             continue
         if proc.returncode != 0:
+            # Claude can report login/spend-limit errors on stdout, with
+            # nothing on stderr. Preserve both streams for diagnosis.
+            details = "; ".join(
+                f"{name}: {' '.join(output.split())[:200]}"
+                for name, output in (("stderr", proc.stderr),
+                                     ("stdout", proc.stdout))
+                if output.strip()) or "no output on stdout or stderr"
             last_err = f"claude exited {proc.returncode}: " \
-                       f"{proc.stderr.strip()[:200]}"
+                       f"{details}"
             continue
         blocks = JSON_BLOCK_RE.findall(proc.stdout)
         if not blocks:
@@ -307,13 +314,13 @@ def main() -> int:
 
     if run_log is not None:
         sys.stdout = run_log.stream
-        if scored_total != full_scored:
+        if errors:
+            print(f"{errors} item(s) errored: NOT written to {a.save_run}. "
+                  "Fix and re-run.")
+        elif scored_total != full_scored:
             print(f"partial run: NOT written to {a.save_run}. Partial runs "
                   "are for finding problems; the run you commit comes from "
                   "one full run of your finished tool.")
-        elif errors:
-            print(f"{errors} item(s) errored: NOT written to {a.save_run}. "
-                  "Fix and re-run.")
         else:
             write_run(a.save_run, str(rubric_p.parent), [rubric_p, skill_p], scored_total,
                       run_log.text())
